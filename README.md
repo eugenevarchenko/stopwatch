@@ -1,2 +1,3 @@
-# test-droid
-Test Android Studio (Kotlin) application.
+Stopwatch
+
+A simple Android stopwatch application. © 2020
