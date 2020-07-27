@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">StopWatch Pro v0.2 alpha</string>
+    <string name="app_name">StopWatch Pro v0.1.2 alpha</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
     <string name="reset">Reset</string>
+    <string name="dark_mode">Dark Mode</string>
 </resources>
