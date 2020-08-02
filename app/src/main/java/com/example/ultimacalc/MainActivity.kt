@@ -1,20 +1,23 @@
 package com.example.ultimacalc
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.os.Handler
 import android.os.SystemClock
-import android.view.View
 import android.widget.TextView
 import android.widget.Button
+import android.widget.RemoteViews
 import android.widget.Switch
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.app.ShareCompat
-import kotlinx.android.synthetic.main.activity_main.*
-import org.w3c.dom.Text
 
 class MainActivity : AppCompatActivity() {
     private val handler: Handler? = Handler()
@@ -32,29 +35,37 @@ class MainActivity : AppCompatActivity() {
     private var isRunning: Boolean = false
     private var wasRunningBeforeStop: Boolean = false
 
-    private var rootLayout: ConstraintLayout? = null
-    private var mainTimeTextView: TextView? = null
-    private var startButton: Button? = null
-    private var stopButton: Button? = null
-    private var resetButton: Button? = null
-    private var darkModeSwitch: Switch? = null
+    private lateinit var rootLayout: ConstraintLayout
+    private lateinit var timeTextView: TextView
+    private lateinit var startButton: Button
+    private lateinit var stopButton: Button
+    private lateinit var resetButton: Button
+    private lateinit var darkModeSwitch: Switch
+
+    private val channelId: String = "com.example.ultimacalc"
+    private val notifyId: Int = 228
+
+    private lateinit var notificationManager: NotificationManager
+    private lateinit var notificationChannel: NotificationChannel
+    private lateinit var builder: Notification.Builder
+    private lateinit var notificationLayout: RemoteViews
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         rootLayout = findViewById(R.id.rootLayout)
-        mainTimeTextView = findViewById(R.id.mainTimeTextView)
+        timeTextView = findViewById(R.id.timeTextView)
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
         resetButton = findViewById(R.id.resetButton)
         darkModeSwitch = findViewById(R.id.darkModeSwitch)
 
-        mainTimeTextView?.text = "0:00.000"
+        timeTextView.text = "0:00.000"
 
-        startButton?.setOnClickListener {
+        startButton.setOnClickListener {
 //            if (isRunning) {
-//                handler?.removeCallbacks(runnable)
+//                handler?.removeCallbacks(runnable)      TODO FIX: kastyli pachini syka ebanaya
 //                isRunning = false
 //            } else {
 
@@ -67,24 +78,24 @@ class MainActivity : AppCompatActivity() {
             } else {
                 handler?.removeCallbacks(runnable)
                 handler?.postDelayed(runnable, 0)
-                isRunning = true
-                wasRunningBeforeStop = false
+//                isRunning = true                       TODO FIX: kastyli pachini syka ebanaya
+//                wasRunningBeforeStop = false
             }
 
-            startButton!!.isEnabled = false
-            stopButton!!.isEnabled = true
+            startButton.isEnabled = false
+            stopButton.isEnabled = true
         }
 
-        stopButton?.setOnClickListener {
+        stopButton.setOnClickListener {
             handler?.removeCallbacks(runnable)
-            isRunning = false
-            wasRunningBeforeStop = true
+//            isRunning = false                      TODO FIX: kastyli pachini syka ebanaya
+//            wasRunningBeforeStop = true
 
-            startButton!!.isEnabled = true
-            stopButton!!.isEnabled = false
+            startButton.isEnabled = true
+            stopButton.isEnabled = false
         }
 
-        resetButton?.setOnClickListener {
+        resetButton.setOnClickListener {
             milliseconds = 0
             seconds = 0
             minutes = 0
@@ -94,33 +105,65 @@ class MainActivity : AppCompatActivity() {
             updatedTime = 0
             millisecondsTime = 0
 
-            mainTimeTextView?.text = "0:00.000"
+            timeTextView.text = "0:00.000"
 
             handler?.removeCallbacks(runnable)
-            isRunning = false
-            wasRunningBeforeStop = false
+//            isRunning = false
+//            wasRunningBeforeStop = false          TODO FIX: kastyli pachini syka ebanaya
 
-            startButton!!.isEnabled = true
-            stopButton!!.isEnabled = true
+            startButton.isEnabled = true
+            stopButton.isEnabled = true
         }
 
-        darkModeSwitch!!.setOnCheckedChangeListener { _, isChecked ->
+        darkModeSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                rootLayout!!.setBackgroundColor(Color.BLACK)
-                darkModeSwitch!!.setTextColor(Color.WHITE)
-                mainTimeTextView!!.setTextColor(Color.WHITE)
-                startButton!!.setBackgroundColor(Color.CYAN)
-                stopButton!!.setBackgroundColor(Color.CYAN)
-                resetButton!!.setBackgroundColor(Color.CYAN)
+                rootLayout.setBackgroundColor(Color.BLACK)
+                darkModeSwitch.setTextColor(Color.WHITE)
+                timeTextView.setTextColor(Color.WHITE)
+                startButton.setBackgroundColor(Color.CYAN)
+                stopButton.setBackgroundColor(Color.CYAN)
+                resetButton.setBackgroundColor(Color.CYAN)
             } else {
-                rootLayout!!.setBackgroundResource(R.drawable.background)
-                darkModeSwitch!!.setTextColor(Color.BLACK)
-                mainTimeTextView!!.setTextColor(Color.BLACK)
-                startButton!!.setBackgroundColor(Color.parseColor("#FF69D5"))
-                stopButton!!.setBackgroundColor(Color.parseColor("#FF69D5"))
-                resetButton!!.setBackgroundColor(Color.parseColor("#FF69D5"))
+                rootLayout.setBackgroundColor(Color.parseColor("#C0F1FF"))
+                darkModeSwitch.setTextColor(Color.BLACK)
+                timeTextView.setTextColor(Color.BLACK)
+                startButton.setBackgroundColor(Color.parseColor("#FF1AB7FF"))
+                stopButton.setBackgroundColor(Color.parseColor("#FF1AB7FF"))
+                resetButton.setBackgroundColor(Color.parseColor("#FF1AB7FF"))
             }
         }
+
+        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val intent = Intent(applicationContext, MainActivity::class.java)
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        notificationLayout = RemoteViews(packageName, R.layout.notification)
+
+        notificationLayout.setTextViewText(R.id.notification_time, timeTextView.text)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationChannel = NotificationChannel(channelId, "хуйв очё", NotificationManager.IMPORTANCE_LOW)
+            notificationChannel.enableLights(true)
+            notificationChannel.lightColor = Color.GREEN
+            notificationChannel.enableVibration(false)
+
+            notificationManager.createNotificationChannel(notificationChannel)
+
+            builder = Notification.Builder(this, channelId)
+                .setContent(notificationLayout)
+                .setSmallIcon(R.mipmap.ic_launcher_round)
+                .setLargeIcon(BitmapFactory.decodeResource(this.resources, R.mipmap.ic_launcher))   // TODO FIX: kastyli pachini syka ebanaya
+                .setContentIntent(pendingIntent)
+        } else {
+            builder = Notification.Builder(this)
+                .setContent(notificationLayout)
+                .setSmallIcon(R.mipmap.ic_launcher_round)
+                .setLargeIcon(BitmapFactory.decodeResource(this.resources, R.mipmap.ic_launcher))   // TODO FIX: kastyli pachini syka ebanaya
+                .setContentIntent(pendingIntent)
+        }
+
+        notificationManager.notify(notifyId, builder.build())
     }
 
     private val runnable: Runnable = object : Runnable {
@@ -137,7 +180,7 @@ class MainActivity : AppCompatActivity() {
 
             when {
                 millisecondsString.length < 3 -> millisecondsString = "0$milliseconds"
-                millisecondsString.length < 2 -> millisecondsString = "00$milliseconds"
+                millisecondsString.length < 2 -> millisecondsString = "00$milliseconds"    // TODO FIX: tekst inogda ska4et kak ebanat
                 else -> millisecondsString = "$milliseconds"
             }
 
@@ -146,9 +189,12 @@ class MainActivity : AppCompatActivity() {
                 else -> secondsString = "$seconds"
             }
 
-            mainTimeTextView?.text = "${minutes.toString()}:$secondsString.$millisecondsString"
+            timeTextView.text = "${minutes.toString()}:$secondsString.$millisecondsString"
 
             handler?.postDelayed(this, 0)
+
+            notificationLayout.setTextViewText(R.id.notification_time, timeTextView.text)
+            notificationManager.notify(notifyId, builder.build())            // TODO FIX: kastyli pachini syka ebanaya
         }
     }
 
